@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Multiplayer Asteroids</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <!-- Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data:; style-src 'self' 'unsafe-inline';">
+  
+  <!-- Mobile-specific meta tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  
+  <!-- Prevent touch delay on mobile devices -->
+  <style>
+    * { touch-action: manipulation; }
+    body { overflow: hidden; position: fixed; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <!-- Login/Register Screen -->
+    <div id="auth-screen" class="screen">
+      <div class="auth-container">
+        <h1>Multiplayer Asteroids</h1>
+        <div class="tabs">
+          <button id="login-tab" class="tab-btn active">Login</button>
+          <button id="register-tab" class="tab-btn">Register</button>
+        </div>
+        
+        <!-- Login Form -->
+        <form id="login-form" class="auth-form">
+          <div class="form-group">
+            <label for="login-username">Username</label>
+            <input type="text" id="login-username" name="username" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+">
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" name="password" required minlength="8">
+          </div>
+          <button type="submit" class="btn primary-btn">Login</button>
+          <div class="error-message" id="login-error"></div>
+        </form>
+        
+        <!-- Register Form -->
+        <form id="register-form" class="auth-form" style="display: none;">
+          <div class="form-group">
+            <label for="register-username">Username</label>
+            <input type="text" id="register-username" name="username" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+">
+            <small>Only letters, numbers, and underscores</small>
+          </div>
+          <div class="form-group">
+            <label for="register-password">Password</label>
+            <input type="password" id="register-password" name="password" required minlength="8">
+            <small>At least 8 characters</small>
+          </div>
+          <div class="form-group">
+            <label for="register-confirm-password">Confirm Password</label>
+            <input type="password" id="register-confirm-password" name="confirmPassword" required minlength="8">
+          </div>
+          <button type="submit" class="btn primary-btn">Register</button>
+          <div class="error-message" id="register-error"></div>
+        </form>
+        
+        <!-- Guest Login -->
+        <div class="guest-login">
+          <button id="guest-login-btn" class="btn secondary-btn">Play as Guest</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Game Lobby Screen -->
+    <div id="lobby-screen" class="screen" style="display: none;">
+      <div class="lobby-container">
+        <h1>Game Lobby</h1>
+        <div class="user-info">
+          <p>Welcome, <span id="username-display">Player</span>!</p>
+          <button id="logout-btn" class="btn small-btn">Logout</button>
+        </div>
+        
+        <div class="game-options">
+          <h2>Join Game</h2>
+          <button id="join-game-btn" class="btn primary-btn">Join Default Game</button>
+          
+          <h2>High Scores</h2>
+          <div class="scores-container">
+            <table id="high-scores-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Player</th>
+                  <th>Score</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="high-scores-body">
+                <!-- Scores will be populated here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen" style="display: none;">
+      <canvas id="game-canvas"></canvas>
+      
+      <div class="game-ui">
+        <div class="game-stats">
+          <div class="score">Score: <span id="score-display">0</span></div>
+          <div class="lives">Lives: <span id="lives-display">3</span></div>
+        </div>
+        
+        <!-- Mobile controls -->
+        <div id="mobile-controls" style="display: none;">
+          <div class="control-group left-controls">
+            <button id="rotate-left-btn" class="control-btn">←</button>
+            <button id="rotate-right-btn" class="control-btn">→</button>
+          </div>
+          <div class="control-group right-controls">
+            <button id="thrust-btn" class="control-btn">▲</button>
+            <button id="shoot-btn" class="control-btn">🔥</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="screen" style="display: none;">
+      <div class="game-over-container">
+        <h1>Game Over</h1>
+        <div class="final-score">
+          <p>Your Score: <span id="final-score-display">0</span></p>
+        </div>
+        
+        <div class="game-over-options">
+          <button id="play-again-btn" class="btn primary-btn">Play Again</button>
+          <button id="return-lobby-btn" class="btn secondary-btn">Return to Lobby</button>
+        </div>
+        
+        <div class="game-over-scores">
+          <h2>Game Leaderboard</h2>
+          <table id="game-leaderboard">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody id="game-leaderboard-body">
+              <!-- Game scores will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Game Won Screen -->
+    <div id="game-won-screen" class="screen" style="display: none;">
+      <div class="game-won-container">
+        <h1>Game Complete!</h1>
+        <div class="winner-info">
+          <h2><span id="winner-name">Player</span> Wins!</h2>
+          <p>Score: <span id="winner-score">0</span></p>
+        </div>
+        
+        <div class="game-won-options">
+          <button id="restart-game-btn" class="btn primary-btn">Play Again</button>
+          <button id="return-lobby-from-win-btn" class="btn secondary-btn">Return to Lobby</button>
+        </div>
+        
+        <div class="game-stats-container">
+          <h2>Player Statistics</h2>
+          <table id="player-stats-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Score</th>
+                <th>Asteroids Hit</th>
+                <th>Players Hit</th>
+                <th>Accuracy</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody id="player-stats-body">
+              <!-- Player stats will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Scripts -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/game.js"></script>
+  <script src="/js/renderer.js"></script>
+  <script src="/js/controls.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html> 

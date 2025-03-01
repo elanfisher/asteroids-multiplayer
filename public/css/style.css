@@ -1,0 +1,442 @@
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #0a0e17;
+  color: #ffffff;
+  line-height: 1.6;
+  overflow: hidden;
+}
+
+/* Game container */
+#game-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Screen styles */
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #0a0e17;
+  z-index: 10;
+}
+
+/* Auth screen */
+.auth-container {
+  background-color: rgba(16, 23, 41, 0.9);
+  border-radius: 8px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.auth-container h1 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #4fc3f7;
+  font-size: 2rem;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  margin-bottom: 1.5rem;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 0.75rem;
+  background-color: #1a2035;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.tab-btn:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.tab-btn:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.tab-btn.active {
+  background-color: #2196f3;
+}
+
+/* Forms */
+.auth-form {
+  margin-bottom: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #2c3e50;
+  border-radius: 4px;
+  background-color: #1a2035;
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+.form-group small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #7f8c8d;
+  font-size: 0.8rem;
+}
+
+.error-message {
+  color: #e74c3c;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* Buttons */
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.1s;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.primary-btn {
+  background-color: #2196f3;
+  color: #ffffff;
+}
+
+.primary-btn:hover {
+  background-color: #1976d2;
+}
+
+.secondary-btn {
+  background-color: #455a64;
+  color: #ffffff;
+}
+
+.secondary-btn:hover {
+  background-color: #37474f;
+}
+
+.small-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* Guest login */
+.guest-login {
+  text-align: center;
+}
+
+/* Lobby screen */
+.lobby-container {
+  background-color: rgba(16, 23, 41, 0.9);
+  border-radius: 8px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 800px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.lobby-container h1 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #4fc3f7;
+}
+
+.user-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #2c3e50;
+}
+
+.game-options h2 {
+  margin: 1.5rem 0 1rem;
+  color: #4fc3f7;
+}
+
+/* Scores table */
+.scores-container {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table th, table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #2c3e50;
+}
+
+table th {
+  background-color: #1a2035;
+  color: #4fc3f7;
+}
+
+/* Game screen */
+#game-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #0a0e17;
+}
+
+.game-ui {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 1rem;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.game-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ffffff;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+}
+
+/* Mobile controls */
+#mobile-controls {
+  position: fixed;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 100;
+}
+
+.control-group {
+  display: flex;
+  gap: 10px;
+}
+
+.control-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: rgba(30, 144, 255, 0.6);
+  color: white;
+  font-size: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.control-btn:active {
+  background-color: rgba(30, 144, 255, 0.9);
+  transform: scale(0.95);
+}
+
+/* Game over screen */
+.game-over-container {
+  background-color: rgba(16, 23, 41, 0.9);
+  border-radius: 8px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.game-over-container h1 {
+  color: #e74c3c;
+  margin-bottom: 1rem;
+}
+
+.final-score {
+  font-size: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.game-over-options {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.game-over-scores h2 {
+  margin-bottom: 1rem;
+  color: #4fc3f7;
+}
+
+/* Game won screen */
+.game-won-container {
+  background-color: rgba(16, 23, 41, 0.9);
+  border-radius: 8px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 800px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.game-won-container h1 {
+  color: #4caf50;
+  margin-bottom: 1rem;
+  font-size: 2.5rem;
+}
+
+.winner-info {
+  margin-bottom: 2rem;
+}
+
+.winner-info h2 {
+  color: #ffc107;
+  margin-bottom: 0.5rem;
+  font-size: 1.8rem;
+}
+
+.winner-info p {
+  font-size: 1.5rem;
+}
+
+.game-won-options {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.game-stats-container {
+  margin-top: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.game-stats-container h2 {
+  margin-bottom: 1rem;
+  color: #4fc3f7;
+}
+
+#player-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#player-stats-table th, #player-stats-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #2c3e50;
+}
+
+#player-stats-table th {
+  background-color: #1a2035;
+  color: #4fc3f7;
+  position: sticky;
+  top: 0;
+}
+
+#player-stats-body tr.current-player {
+  background-color: rgba(33, 150, 243, 0.2);
+}
+
+#player-stats-body tr.winner {
+  background-color: rgba(76, 175, 80, 0.2);
+}
+
+#player-stats-body tr.winner.current-player {
+  background-color: rgba(76, 175, 80, 0.4);
+}
+
+/* Responsive styles */
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .auth-container, .lobby-container, .game-over-container, .game-won-container {
+    padding: 1.5rem;
+  }
+  
+  .game-stats {
+    font-size: 1rem;
+  }
+  
+  table th, table td {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .game-won-container h1 {
+    font-size: 2rem;
+  }
+  
+  .winner-info h2 {
+    font-size: 1.5rem;
+  }
+  
+  .winner-info p {
+    font-size: 1.2rem;
+  }
+}
+
+/* Add media query for mobile devices */
+@media (max-width: 768px) {
+  .game-stats {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+  }
+  
+  #mobile-controls {
+    display: flex !important;
+  }
+} 

@@ -1,0 +1,26 @@
+FROM mcr.microsoft.com/playwright:v1.40.0-focal
+
+# Create app directory
+WORKDIR /usr/src/test
+
+# Install necessary dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy test script and related files
+COPY test-game.js ./
+
+# Install Playwright dependencies
+RUN npx playwright install chromium
+RUN npx playwright install-deps chromium
+
+# Create directory for test artifacts
+RUN mkdir -p test-artifacts
+
+# Set environment variables
+ENV HEADLESS=true
+ENV GAME_URL=http://app:3000
+ENV DOCKER_ENV=true
+
+# Run the test when the container starts
+CMD ["node", "test-game.js"] 

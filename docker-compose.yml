@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        - NODE_ENV=${NODE_ENV:-development}
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongo:27017/asteroids
+      - SESSION_SECRET=${SESSION_SECRET:-dev_session_secret}
+      - HOST=0.0.0.0
+      - DEBUG=${DEBUG:-asteroids:*}
+    volumes:
+      # Do not mount node_modules to use the container's own modules
+      - ./:/usr/src/app
+      # This is a path exclusion - it tells Docker not to mount the host's node_modules
+      - /usr/src/app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - asteroids-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', res => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  mongo:
+    image: mongo:6
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+      # Add a volume for initialization scripts
+      - ./mongo-init:/docker-entrypoint-initdb.d
+    environment:
+      - MONGO_INITDB_DATABASE=asteroids
+    restart: unless-stopped
+    networks:
+      - asteroids-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./test-artifacts:/usr/src/test/test-artifacts
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - asteroids-network
+    environment:
+      - HEADLESS=${TEST_HEADLESS:-true}
+      - GAME_URL=http://app:3000
+      - TEST_DURATION=${TEST_DURATION:-60000}
+      - DOCKER_ENV=true
+
+volumes:
+  mongo-data:
+
+networks:
+  asteroids-network:
+    driver: bridge 

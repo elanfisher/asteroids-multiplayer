@@ -66,6 +66,9 @@ const Game = (() => {
     shoot: false
   };
   
+  // Debug flag - ADDED for troubleshooting
+  const DEBUG = true;
+  
   // Initialize game
   const init = () => {
     // Add event listeners
@@ -80,6 +83,16 @@ const Game = (() => {
     
     // Initialize controls
     Controls.init(socket);
+    
+    // Debug log controls state
+    if (DEBUG) {
+      console.log("Controls initialized, testing state:", Controls.getControlState());
+      
+      // Add a debug message to check key events
+      window.addEventListener('keydown', (e) => {
+        console.log("Key pressed:", e.key, "Controls state:", Controls.getControlState());
+      });
+    }
     
     // Initialize socket connection
     initSocket();
@@ -128,6 +141,8 @@ const Game = (() => {
       
       // Show notification that player joined
       showNotification('You joined the game!', 'success');
+      
+      if (DEBUG) console.log("Connected with player ID:", playerId);
     });
     
     socket.on('disconnect', () => {
@@ -135,10 +150,12 @@ const Game = (() => {
     });
     
     socket.on('connect_error', (error) => {
-      // Create fallback game state if none exists
+      // Create fallback game state if authentication fails
       if (!gameState) {
         createFallbackGameState();
       }
+      
+      if (DEBUG) console.error("Socket connection error:", error);
     });
 
     socket.on('error', (error) => {
@@ -192,6 +209,7 @@ const Game = (() => {
       if (gameState && gameState.bullets && data.bulletId) {
         // Server has confirmed the bullet, we can rely on server data
         gameState.bullets[data.bulletId] = data.bullet;
+        if (DEBUG) console.log("Bullet acknowledged by server:", data.bulletId);
       }
     });
   };
@@ -761,19 +779,44 @@ const Game = (() => {
   const handleBulletCreated = (bullet) => {
     if (!gameState) return;
     
-    // Add bullet to game state immediately with reduced velocity
-    const slowedBullet = {...bullet};
-    slowedBullet.velocityX = bullet.velocityX * 0.5;
-    slowedBullet.velocityY = bullet.velocityY * 0.5;
-    gameState.bullets[bullet.id] = slowedBullet;
+    // Log bullet creation for debugging
+    if (DEBUG) console.log("Bullet received from server:", bullet.id, bullet);
+    
+    // Add bullet to game state with correct velocity
+    gameState.bullets[bullet.id] = bullet;
+    
+    // Play sound if available
+    if (window.Audio && document.getElementById('laser-sound')) {
+      const sound = document.getElementById('laser-sound');
+      sound.currentTime = 0;
+      sound.play().catch(e => {
+        // Silent catch for autoplay restrictions
+      });
+    }
   };
   
   // Handle player shoot action
   const handlePlayerShoot = () => {
-    if (!gameState || !playerId || !gameState.players[playerId]) return;
+    if (!gameState) {
+      if (DEBUG) console.log("Can't shoot: no gameState");
+      return;
+    }
+    
+    if (!playerId) {
+      if (DEBUG) console.log("Can't shoot: no playerId");
+      return;
+    }
+    
+    if (!gameState.players[playerId]) {
+      if (DEBUG) console.log("Can't shoot: player not in gameState");
+      return;
+    }
     
     const now = Date.now();
-    if (now - lastShootTime < SHOOT_COOLDOWN) return; // Enforce cooldown
+    if (now - lastShootTime < SHOOT_COOLDOWN) {
+      if (DEBUG) console.log("Can't shoot: on cooldown");
+      return; // Enforce cooldown
+    }
     
     lastShootTime = now;
     
@@ -804,22 +847,32 @@ const Game = (() => {
     if (!gameState.bullets) gameState.bullets = {};
     gameState.bullets[bulletId] = bullet;
     
-    // Send to server
+    if (DEBUG) console.log("Shooting bullet:", bulletId, "at position:", bulletX, bulletY);
+    
+    // Send to server - CRITICAL FIX: Ensure the parameters match what the server expects
     if (socket && socket.connected) {
       socket.emit('playerShoot', {
-        bulletId,
+        id: bulletId, // Added missing id parameter
         x: bulletX,
         y: bulletY,
         rotation: player.rotation,
-        playerId
+        velocityX: bullet.velocityX, // Added missing velocityX
+        velocityY: bullet.velocityY, // Added missing velocityY
+        playerId: playerId
       });
+      
+      if (DEBUG) console.log("Sent bullet to server:", bulletId);
+    } else {
+      if (DEBUG) console.log("Socket not connected, bullet is client-side only");
     }
     
     // Play sound if available
     if (window.Audio && document.getElementById('laser-sound')) {
       const sound = document.getElementById('laser-sound');
       sound.currentTime = 0;
-      sound.play().catch(e => {/* ignore errors */});
+      sound.play().catch(e => {
+        if (DEBUG) console.log("Error playing sound:", e);
+      });
     }
   };
   
@@ -924,8 +977,9 @@ const Game = (() => {
         if (player.y < 0) player.y = gameState.height;
         if (player.y > gameState.height) player.y = 0;
         
-        // Handle shooting
+        // Handle shooting - log when shoot control is pressed
         if (controls.shoot) {
+          if (DEBUG) console.log("Shoot control pressed");
           handlePlayerShoot();
         }
         
@@ -967,7 +1021,7 @@ const Game = (() => {
         }
       });
       
-      // Apply client-side prediction for AI players - Fixed AI movement
+      // Apply client-side prediction for AI players - IMPROVED
       Object.values(gameState.players || {}).forEach(player => {
         if (player.isAI && player.id !== playerId) {
           // Ensure AI has valid position
@@ -976,21 +1030,18 @@ const Game = (() => {
           if (isNaN(player.rotation)) player.rotation = 0;
           if (isNaN(player.speed)) player.speed = 0;
           
-          // AI movement behavior - ensure AI is always moving
-          // Add random movement change more frequently
-          if (Math.random() < 0.03) { // 3% chance each frame to change direction
-            player.rotation += (Math.random() - 0.5) * 0.2;
-            player.speed = Math.max(1.0, Math.min(MAX_SPEED * 0.7, player.speed + (Math.random() - 0.3) * 0.5));
-            player.thrust = Math.random() > 0.3; // 70% chance to be thrusting
-          }
+          // FORCE AI movement - FIXED to ensure movement occurs every frame
+          player.rotation += (Math.random() - 0.5) * 0.1; // Small rotation change every frame
+          player.speed = Math.max(2.0, Math.min(MAX_SPEED * 0.8, player.speed + (Math.random() - 0.3) * 0.3));
+          player.thrust = true; // Always thrust
           
-          // Always apply some minimum speed to ensure movement
-          if (player.speed < 0.5) player.speed = 0.5 + Math.random() * 0.5;
+          // Always ensure minimum movement
+          if (player.speed < 2.0) player.speed = 2.0;
           
-          // Apply movement for AI with time scaling
+          // Apply movement with time scaling - FULL SPEED for AI
           const adjustedRotation = player.rotation - Math.PI / 2;
-          player.x += Math.cos(adjustedRotation) * player.speed * timeScale * 0.8; // Slow down AI a bit
-          player.y += Math.sin(adjustedRotation) * player.speed * timeScale * 0.8;
+          player.x += Math.cos(adjustedRotation) * player.speed * timeScale;
+          player.y += Math.sin(adjustedRotation) * player.speed * timeScale;
           
           // Wrap around screen edges
           if (player.x < 0) player.x = gameState.width;
@@ -998,11 +1049,11 @@ const Game = (() => {
           if (player.y < 0) player.y = gameState.height;
           if (player.y > gameState.height) player.y = 0;
           
-          // Occasionally make AI shoot
-          if (Math.random() < 0.005 && socket && socket.connected) { // 0.5% chance each frame
+          // AI shooting - more frequent
+          if (Math.random() < 0.05) { // 5% chance each frame
             const bulletId = 'bullet-' + player.id + '-' + currentTime;
             const adjustedRotation = player.rotation - Math.PI / 2;
-            const bulletSpeed = 6; // Slightly slower than player bullets
+            const bulletSpeed = 7;
             const offsetDistance = 20;
             
             const bulletX = player.x + Math.cos(adjustedRotation) * offsetDistance;
@@ -1010,6 +1061,7 @@ const Game = (() => {
             
             // Add AI bullet to game state
             if (!gameState.bullets) gameState.bullets = {};
+            
             gameState.bullets[bulletId] = {
               id: bulletId,
               x: bulletX,
@@ -1019,6 +1071,8 @@ const Game = (() => {
               velocityY: Math.sin(adjustedRotation) * bulletSpeed,
               createdAt: currentTime
             };
+            
+            if (DEBUG) console.log("AI shooting:", player.id, "bullet:", bulletId);
           }
         }
       });

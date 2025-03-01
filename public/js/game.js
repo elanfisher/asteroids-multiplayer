@@ -25,10 +25,10 @@ const Game = (() => {
   let gameHeight = 3000;
   
   // Movement speed factors - Further adjusted for better control
-  const ROTATION_SPEED = 0.12;     // Increased from 0.08
-  const ACCELERATION = 0.2;       // Increased from 0.15
-  const MAX_SPEED = 5.0;         // Increased from 3.5
-  const FRICTION = 0.97;        // Reduced from 0.98 for better stopping
+  const ROTATION_SPEED = 0.06;     // Reduced by half from 0.12
+  const ACCELERATION = 0.2;       // Left as is
+  const MAX_SPEED = 5.0;         // Left as is
+  const FRICTION = 0.97;        // Left as is
   
   // Track last shoot time to prevent rapid firing
   let lastShootTime = 0;
@@ -800,17 +800,20 @@ const Game = (() => {
       createdAt: now
     };
     
-    // Add to local game state
+    // Add to local game state immediately
+    if (!gameState.bullets) gameState.bullets = {};
     gameState.bullets[bulletId] = bullet;
     
     // Send to server
-    socket.emit('playerShoot', {
-      bulletId,
-      x: bulletX,
-      y: bulletY,
-      rotation: player.rotation,
-      playerId
-    });
+    if (socket && socket.connected) {
+      socket.emit('playerShoot', {
+        bulletId,
+        x: bulletX,
+        y: bulletY,
+        rotation: player.rotation,
+        playerId
+      });
+    }
     
     // Play sound if available
     if (window.Audio && document.getElementById('laser-sound')) {
@@ -964,7 +967,7 @@ const Game = (() => {
         }
       });
       
-      // Apply client-side prediction for AI players
+      // Apply client-side prediction for AI players - Fixed AI movement
       Object.values(gameState.players || {}).forEach(player => {
         if (player.isAI && player.id !== playerId) {
           // Ensure AI has valid position
@@ -973,23 +976,50 @@ const Game = (() => {
           if (isNaN(player.rotation)) player.rotation = 0;
           if (isNaN(player.speed)) player.speed = 0;
           
+          // AI movement behavior - ensure AI is always moving
+          // Add random movement change more frequently
+          if (Math.random() < 0.03) { // 3% chance each frame to change direction
+            player.rotation += (Math.random() - 0.5) * 0.2;
+            player.speed = Math.max(1.0, Math.min(MAX_SPEED * 0.7, player.speed + (Math.random() - 0.3) * 0.5));
+            player.thrust = Math.random() > 0.3; // 70% chance to be thrusting
+          }
+          
+          // Always apply some minimum speed to ensure movement
+          if (player.speed < 0.5) player.speed = 0.5 + Math.random() * 0.5;
+          
           // Apply movement for AI with time scaling
           const adjustedRotation = player.rotation - Math.PI / 2;
           player.x += Math.cos(adjustedRotation) * player.speed * timeScale * 0.8; // Slow down AI a bit
           player.y += Math.sin(adjustedRotation) * player.speed * timeScale * 0.8;
-          
-          // Add small random movement to make AI more lively
-          if (Math.random() < 0.05) { // 5% chance each frame
-            player.rotation += (Math.random() - 0.5) * 0.1;
-            player.speed += (Math.random() - 0.5) * 0.2;
-            player.speed = Math.max(0, Math.min(MAX_SPEED * 0.7, player.speed));
-          }
           
           // Wrap around screen edges
           if (player.x < 0) player.x = gameState.width;
           if (player.x > gameState.width) player.x = 0;
           if (player.y < 0) player.y = gameState.height;
           if (player.y > gameState.height) player.y = 0;
+          
+          // Occasionally make AI shoot
+          if (Math.random() < 0.005 && socket && socket.connected) { // 0.5% chance each frame
+            const bulletId = 'bullet-' + player.id + '-' + currentTime;
+            const adjustedRotation = player.rotation - Math.PI / 2;
+            const bulletSpeed = 6; // Slightly slower than player bullets
+            const offsetDistance = 20;
+            
+            const bulletX = player.x + Math.cos(adjustedRotation) * offsetDistance;
+            const bulletY = player.y + Math.sin(adjustedRotation) * offsetDistance;
+            
+            // Add AI bullet to game state
+            if (!gameState.bullets) gameState.bullets = {};
+            gameState.bullets[bulletId] = {
+              id: bulletId,
+              x: bulletX,
+              y: bulletY,
+              playerId: player.id,
+              velocityX: Math.cos(adjustedRotation) * bulletSpeed,
+              velocityY: Math.sin(adjustedRotation) * bulletSpeed,
+              createdAt: currentTime
+            };
+          }
         }
       });
       
@@ -1014,6 +1044,9 @@ const Game = (() => {
         });
       }
       
+      // Simple collision detection implementation (client-side)
+      detectCollisions();
+      
       // Clean up any disconnected players (remove after 10 seconds of inactivity)
       Object.keys(gameState.players || {}).forEach(id => {
         const player = gameState.players[id];
@@ -1027,6 +1060,166 @@ const Game = (() => {
     
     if (!isGameOver && !isGameWon) {
       requestAnimationFrame(gameLoop);
+    }
+  };
+  
+  // Add collision detection function
+  const detectCollisions = () => {
+    if (!gameState || !gameState.players || !gameState.asteroids) return;
+    
+    // Get current time for respawn timing
+    const currentTime = Date.now();
+    
+    // Check each asteroid against each player
+    Object.values(gameState.asteroids).forEach(asteroid => {
+      if (!asteroid || !asteroid.radius) return;
+      
+      Object.values(gameState.players).forEach(player => {
+        if (!player || player.dead || player.invulnerable) return;
+        
+        // Calculate distance between asteroid and player
+        const dx = player.x - asteroid.x;
+        const dy = player.y - asteroid.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Collision detected (player ship radius is approximately 15)
+        const playerRadius = 15;
+        if (distance < asteroid.radius + playerRadius) {
+          // Handle player hit
+          player.lives = player.lives > 0 ? player.lives - 1 : 0;
+          
+          // If this is the local player, update UI
+          if (player.id === playerId) {
+            updateUI();
+            
+            // Show notification
+            showNotification('You were hit by an asteroid!', 'warning');
+            
+            // Game over if no lives left
+            if (player.lives <= 0) {
+              handlePlayerGameOver({score: player.score || 0});
+              return;
+            }
+          }
+          
+          // Make player temporarily invulnerable
+          player.invulnerable = true;
+          player.invulnerableUntil = currentTime + 3000; // 3 seconds of invulnerability
+          
+          // Reset player position to center if it's the local player
+          if (player.id === playerId) {
+            player.x = gameState.width / 2;
+            player.y = gameState.height / 2;
+            player.speed = 0;
+            
+            // Send respawn info to server
+            if (socket && socket.connected) {
+              socket.emit('playerRespawned', {
+                x: player.x,
+                y: player.y,
+                lives: player.lives
+              });
+            }
+          }
+        }
+      });
+      
+      // Check each asteroid against each bullet
+      if (gameState.bullets) {
+        Object.entries(gameState.bullets).forEach(([bulletId, bullet]) => {
+          if (!bullet) return;
+          
+          // Calculate distance between asteroid and bullet
+          const dx = bullet.x - asteroid.x;
+          const dy = bullet.y - asteroid.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          // Collision detected
+          if (distance < asteroid.radius + 5) { // Bullet radius is approximately 5
+            // Remove bullet
+            delete gameState.bullets[bulletId];
+            
+            // If this is the local player's bullet, update score locally
+            if (bullet.playerId === playerId) {
+              // Add score based on asteroid size
+              let scoreValue = 0;
+              if (asteroid.size === 'large') scoreValue = 20;
+              else if (asteroid.size === 'medium') scoreValue = 50;
+              else if (asteroid.size === 'small') scoreValue = 100;
+              
+              // Update player score
+              if (gameState.players[playerId]) {
+                gameState.players[playerId].score += scoreValue;
+                updateUI();
+                
+                // Show notification
+                showNotification(`+${scoreValue} points!`, 'success');
+                
+                // Send score update to server
+                if (socket && socket.connected) {
+                  socket.emit('scoreUpdate', {
+                    score: gameState.players[playerId].score
+                  });
+                }
+              }
+            }
+            
+            // Tell server about hit (which will handle asteroid destruction/splitting)
+            if (socket && socket.connected) {
+              socket.emit('asteroidHit', {
+                asteroidId: asteroid.id,
+                bulletId: bulletId,
+                playerId: bullet.playerId
+              });
+            } else {
+              // If offline or server disconnected, handle asteroid locally
+              handleAsteroidHit(asteroid, bulletId, bullet.playerId);
+            }
+          }
+        });
+      }
+    });
+    
+    // Remove invulnerability status from players when time is up
+    Object.values(gameState.players).forEach(player => {
+      if (player.invulnerable && player.invulnerableUntil && currentTime > player.invulnerableUntil) {
+        player.invulnerable = false;
+        delete player.invulnerableUntil;
+      }
+    });
+  };
+  
+  // Handle asteroid hit locally when server is unavailable
+  const handleAsteroidHit = (asteroid, bulletId, playerId) => {
+    if (!gameState) return;
+    
+    // Remove the asteroid from the game state
+    if (gameState.asteroids && asteroid.id && gameState.asteroids[asteroid.id]) {
+      delete gameState.asteroids[asteroid.id];
+    }
+    
+    // Create smaller asteroids if this wasn't a small asteroid
+    if (asteroid.size !== 'small') {
+      const newSize = asteroid.size === 'large' ? 'medium' : 'small';
+      const newRadius = newSize === 'medium' ? 30 : 15;
+      const newSpeed = asteroid.size === 'large' ? 0.7 : 1.0;
+      
+      // Create 2 smaller asteroids
+      for (let i = 0; i < 2; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const newAsteroidId = 'asteroid-' + Math.random().toString(36).substring(2, 10);
+        
+        gameState.asteroids[newAsteroidId] = {
+          id: newAsteroidId,
+          x: asteroid.x,
+          y: asteroid.y,
+          radius: newRadius,
+          size: newSize,
+          rotation: Math.random() * Math.PI * 2,
+          velocityX: Math.cos(angle) * newSpeed * (Math.random() * 0.5 + 0.5),
+          velocityY: Math.sin(angle) * newSpeed * (Math.random() * 0.5 + 0.5)
+        };
+      }
     }
   };
   
